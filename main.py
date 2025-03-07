@@ -44,14 +44,16 @@ app.add_middleware(
 )
 
 # Load RAG components
-INDEX_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faiss_index.bin")
-METADATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metadata.pkl")
+INDEX_FILE = "faiss_index.bin"  # Relative path
+METADATA_FILE = "metadata.pkl"  # Relative path
 
-MODEL_PATH = "sentence-transformers/all-MiniLM-L6-v2"
+MODEL_PATH = "./models/sentence-transformers_all-MiniLM-L6-v2"
 transformer = models.Transformer(MODEL_PATH)
 pooling = models.Pooling(transformer.get_word_embedding_dimension(), pooling_mode="mean")
 model = SentenceTransformer(modules=[transformer, pooling])
 
+if not os.path.exists(INDEX_FILE):
+    raise FileNotFoundError(f"FAISS index file not found at {INDEX_FILE}")
 index = faiss.read_index(INDEX_FILE)
 with open(METADATA_FILE, "rb") as f:
     rag_data = pickle.load(f)
@@ -134,7 +136,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
         messages = [system_message, user_message]
 
         chat_data = {
-            "user_id": current_user["email"],  # Changed to email for consistency
+            "user_id": current_user["email"],
             "user_message": user_input,
             "bot_reply": "Streaming..."
         }
