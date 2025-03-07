@@ -12,7 +12,7 @@ from auth import create_access_token, get_current_user, verify_password
 from starlette.responses import StreamingResponse
 from openai import AsyncOpenAI
 from sentence_transformers import SentenceTransformer, models
-import faiss  # type: ignore
+import faiss
 import pickle
 
 # Configure logging
@@ -44,13 +44,11 @@ app.add_middleware(
 )
 
 # Load RAG components
-INDEX_FILE = "faiss_index.bin"  # Relative path
-METADATA_FILE = "metadata.pkl"  # Relative path
+INDEX_FILE = "faiss_index.bin"
+METADATA_FILE = "metadata.pkl"
 
-MODEL_PATH = "./models/sentence-transformers_all-MiniLM-L6-v2"
-transformer = models.Transformer(MODEL_PATH)
-pooling = models.Pooling(transformer.get_word_embedding_dimension(), pooling_mode="mean")
-model = SentenceTransformer(modules=[transformer, pooling])
+# Use Hugging Face model ID instead of local path
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 if not os.path.exists(INDEX_FILE):
     raise FileNotFoundError(f"FAISS index file not found at {INDEX_FILE}")
@@ -60,6 +58,7 @@ with open(METADATA_FILE, "rb") as f:
 chunks = rag_data["chunks"]
 chunk_metadata = rag_data["metadata"]
 
+# Rest of your code remains unchanged...
 def retrieve_chunks(query, k=3):
     query_embedding = model.encode([query], convert_to_numpy=True)
     distances, indices = index.search(query_embedding, k)
