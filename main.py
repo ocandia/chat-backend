@@ -48,7 +48,7 @@ INDEX_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faiss_ind
 METADATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metadata.pkl")
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "all-MiniLM-L6-v2")
 
-transformer = models.Transformer(MODEL_PATH)
+MODEL_PATH = "sentence-transformers/all-MiniLM-L6-v2"
 pooling = models.Pooling(transformer.get_word_embedding_dimension(), pooling_mode="mean")
 model = SentenceTransformer(modules=[transformer, pooling])
 
