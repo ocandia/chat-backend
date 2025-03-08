@@ -4,7 +4,7 @@ import os
 import json
 import asyncio
 import logging
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -45,19 +45,21 @@ if not openai_api_key:
 app = FastAPI()
 
 # Updated CORS Middleware to include all Vercel frontend domains
+origins = [
+    "http://localhost:3000",
+    "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",  # Production domain
+    "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",  # Preview domain
+    "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",  # Current production domain
+    "https://god-chatbot-frontend-*.vercel.app",  # Wildcard for all Vercel subdomains
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",  # Production domain
-        "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",  # Preview domain
-        "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",  # Current production domain
-        "https://god-chatbot-frontend-*.vercel.app",  # Wildcard for all Vercel subdomains
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+logger.info("CORS middleware successfully configured with origins: %s", origins)
 
 # Load RAG components
 INDEX_FILE = "faiss_index.bin"
@@ -196,8 +198,8 @@ def get_chat_history(current_user: dict = Depends(get_current_user)):
     return {"history": chats}
 
 @app.post("/token")
-async def login(request: TokenRequest):
-    logger.info(f"Received login request: email={request.email}")
+async def login(request: TokenRequest, req: Request):
+    logger.info(f"Received login request from origin: {req.headers.get('origin')}")
     user = users_collection.find_one({"email": request.email})
     if not user:
         logger.error(f"User not found: {request.email}")
@@ -210,4 +212,6 @@ async def login(request: TokenRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(data={"sub": user["email"]}, expires_delta=timedelta(hours=1))
     logger.info(f"Login success: {request.email}, Token: {token}")
-    return {"access_token": token, "token_type": "bearer"}
+    response = {"access_token": token, "token_type": "bearer"}
+    logger.info(f"Returning response with headers: {response}")
+    return response
