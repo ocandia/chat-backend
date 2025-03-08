@@ -43,9 +43,13 @@ if not openai_api_key:
 
 app = FastAPI()
 
+# Updated CORS Middleware to include Vercel frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
