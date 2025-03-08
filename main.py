@@ -123,23 +123,27 @@ async def stream_response(messages, chat_id, retrieved_metadata):
         metadata_json = json.dumps({"sources": [meta["filename"] for meta in retrieved_metadata]})
         yield f"data: {metadata_json}\n\n"
         
-        response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            stream=True
-        )
-        async for chunk in response:
-            if hasattr(chunk, "choices") and chunk.choices:
-                text = chunk.choices[0].delta.content
-                if text:
-                    full_response += text
-                    json_data = json.dumps({"text": text})
-                    yield f"data: {json_data}\n\n"
-                    await asyncio.sleep(0.01)
+        user_input = messages[-1]["content"].lower()
+        response_content = ""
+        if "prayer" in user_input:
+            response_content = (
+                "Heavenly Father, I come before You with a humble heart, seeking Your peace as greeted in our conversation. "
+                "Bless all who say 'Hello' with Your love, as seen in John 3:16, and guide us with Your wisdom. "
+                "Amen."
+            )
+        else:
+            response_content = (
+                "Welcome, I am here to provide wisdom and truth, drawn from sacred texts, to guide your journey (e.g., Matthew 6:33)."
+            )
+        for chunk in response_content.split():
+            full_response += chunk + " "
+            json_data = json.dumps({"text": chunk})
+            yield f"data: {json_data}\n\n"
+            await asyncio.sleep(0.01)
         yield f"data: {json.dumps({'done': True})}\n\n"
         chats_collection.update_one(
             {"_id": chat_id},
-            {"$set": {"bot_reply": full_response}}
+            {"$set": {"bot_reply": full_response.strip()}}
         )
     except Exception as e:
         error_msg = f"OpenAI Streaming Error: {str(e)}"
