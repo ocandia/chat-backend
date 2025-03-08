@@ -51,6 +51,7 @@ app.add_middleware(
         "http://localhost:3000",
         "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",  # Production domain
         "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",  # Preview domain
+        "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",  # Current production domain
         "https://god-chatbot-frontend-*.vercel.app",  # Wildcard for all Vercel subdomains
     ],
     allow_credentials=True,
@@ -92,20 +93,24 @@ def retrieve_chunks(query, k=3):
 
 @app.get("/")
 def root():
+    logger.info("Root endpoint accessed")
     return {"message": "Front end is running: God AI is running"}
 
 @app.post("/users/")
 async def create_user(user: UserRequest):
+    logger.info(f"Creating user with email: {user.email}")
     if users_collection.find_one({"email": user.email}):
+        logger.error(f"Email already registered: {user.email}")
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = pwd_context.hash(user.password)
     user_data = {"email": user.email, "hashed_password": hashed_password}
     users_collection.insert_one(user_data)
+    logger.info(f"User created successfully: {user.email}")
     return {"message": "User created successfully"}
 
 @app.get("/check-auth")
 def check_auth(current_user: dict = Depends(get_current_user)):
-    print(f"🔐 Authenticated User: {current_user}")
+    logger.info(f"Authenticated user: {current_user}")
     return {"status": "authenticated", "user": current_user["email"]}
 
 client = AsyncOpenAI(api_key=openai_api_key)
@@ -143,6 +148,7 @@ async def stream_response(messages, chat_id, retrieved_metadata):
 async def chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     user_input = request.message.strip()
     if not user_input:
+        logger.error("Message cannot be empty")
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     try:
@@ -185,12 +191,13 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
 
 @app.get("/chat-history")
 def get_chat_history(current_user: dict = Depends(get_current_user)):
+    logger.info(f"Fetching chat history for user: {current_user['email']}")
     chats = list(chats_collection.find({"user_id": current_user["email"]}, {"_id": 0}))
     return {"history": chats}
 
 @app.post("/token")
 async def login(request: TokenRequest):
-    logger.info(f"Received request: email={request.email}, password={request.password}")
+    logger.info(f"Received login request: email={request.email}")
     user = users_collection.find_one({"email": request.email})
     if not user:
         logger.error(f"User not found: {request.email}")
