@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from database import chats_collection, users_collection
 from auth import create_access_token, get_current_user, verify_password
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, JSONResponse
 from openai import AsyncOpenAI
 from sentence_transformers import SentenceTransformer
 from passlib.context import CryptContext
@@ -47,10 +47,10 @@ app = FastAPI()
 # Updated CORS Middleware to include all Vercel frontend domains
 origins = [
     "http://localhost:3000",
-    "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",  # Production domain
-    "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",  # Preview domain
-    "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",  # Current production domain
-    "https://god-chatbot-frontend-*.vercel.app",  # Wildcard for all Vercel subdomains
+    "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",
+    "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",
+    "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",
+    "https://god-chatbot-frontend-*.vercel.app",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -197,9 +197,23 @@ def get_chat_history(current_user: dict = Depends(get_current_user)):
     chats = list(chats_collection.find({"user_id": current_user["email"]}, {"_id": 0}))
     return {"history": chats}
 
+@app.options("/token")
+async def options_token(req: Request):
+    logger.info(f"Handling OPTIONS request from origin: {req.headers.get('origin')}")
+    return JSONResponse(
+        content={"message": "Preflight request handled"},
+        headers={
+            "Access-Control-Allow-Origin": req.headers.get("origin", "*"),
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
+
 @app.post("/token")
 async def login(request: TokenRequest, req: Request):
     logger.info(f"Received login request from origin: {req.headers.get('origin')}")
+    logger.info(f"Request headers: {dict(req.headers)}")
     user = users_collection.find_one({"email": request.email})
     if not user:
         logger.error(f"User not found: {request.email}")
@@ -214,4 +228,7 @@ async def login(request: TokenRequest, req: Request):
     logger.info(f"Login success: {request.email}, Token: {token}")
     response = {"access_token": token, "token_type": "bearer"}
     logger.info(f"Returning response with headers: {response}")
-    return response
+    return JSONResponse(
+        content=response,
+        headers={"Access-Control-Allow-Origin": req.headers.get("origin", "*")}
+    )
