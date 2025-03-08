@@ -1,3 +1,4 @@
+# Force redeploy with CORS fix - March 08, 2025
 from datetime import timedelta
 import os
 import json
@@ -43,12 +44,14 @@ if not openai_api_key:
 
 app = FastAPI()
 
-# Updated CORS Middleware to include Vercel frontend
+# Updated CORS Middleware to include all Vercel frontend domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app"
+        "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",  # Production domain
+        "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",  # Preview domain
+        "https://god-chatbot-frontend-*.vercel.app",  # Wildcard for all Vercel subdomains
     ],
     allow_credentials=True,
     allow_methods=["*"],
