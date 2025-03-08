@@ -11,7 +11,8 @@ from database import chats_collection, users_collection
 from auth import create_access_token, get_current_user, verify_password
 from starlette.responses import StreamingResponse
 from openai import AsyncOpenAI
-from sentence_transformers import SentenceTransformer, models
+from sentence_transformers import SentenceTransformer
+from passlib.context import CryptContext
 import faiss
 import pickle
 
@@ -19,12 +20,19 @@ import pickle
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 class TokenRequest(BaseModel):
     email: str
     password: str
 
 class ChatRequest(BaseModel):
     message: str
+
+class UserRequest(BaseModel):
+    email: str
+    password: str
 
 # Load environment variables
 load_dotenv()
@@ -46,20 +54,29 @@ app.add_middleware(
 # Load RAG components
 INDEX_FILE = "faiss_index.bin"
 METADATA_FILE = "metadata.pkl"
-
-# Use Hugging Face model ID instead of local path
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-if not os.path.exists(INDEX_FILE):
-    raise FileNotFoundError(f"FAISS index file not found at {INDEX_FILE}")
-index = faiss.read_index(INDEX_FILE)
-with open(METADATA_FILE, "rb") as f:
-    rag_data = pickle.load(f)
-chunks = rag_data["chunks"]
-chunk_metadata = rag_data["metadata"]
+# Handle missing FAISS files gracefully
+index = None
+chunks = []
+chunk_metadata = []
+if os.path.exists(INDEX_FILE) and os.path.exists(METADATA_FILE):
+    try:
+        index = faiss.read_index(INDEX_FILE)
+        with open(METADATA_FILE, "rb") as f:
+            rag_data = pickle.load(f)
+        chunks = rag_data["chunks"]
+        chunk_metadata = rag_data["metadata"]
+        logger.info("FAISS index and metadata loaded successfully")
+    except Exception as e:
+        logger.error(f"Error loading FAISS files: {str(e)}")
+else:
+    logger.warning("FAISS index or metadata not found. RAG disabled.")
 
-# Rest of your code remains unchanged...
 def retrieve_chunks(query, k=3):
+    if index is None:
+        logger.info("RAG disabled, returning empty chunks")
+        return [], []
     query_embedding = model.encode([query], convert_to_numpy=True)
     distances, indices = index.search(query_embedding, k)
     retrieved_chunks = [chunks[i] for i in indices[0]]
@@ -69,6 +86,15 @@ def retrieve_chunks(query, k=3):
 @app.get("/")
 def root():
     return {"message": "Front end is running: God AI is running"}
+
+@app.post("/users/")
+async def create_user(user: UserRequest):
+    if users_collection.find_one({"email": user.email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed_password = pwd_context.hash(user.password)
+    user_data = {"email": user.email, "hashed_password": hashed_password}
+    users_collection.insert_one(user_data)
+    return {"message": "User created successfully"}
 
 @app.get("/check-auth")
 def check_auth(current_user: dict = Depends(get_current_user)):
