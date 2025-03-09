@@ -1,5 +1,13 @@
-from datetime import timedelta
 import os
+import certifi
+# Use certifi's CA bundle for SSL verification
+os.environ['SSL_CERT_FILE'] = certifi.where()
+
+# OPTIONAL: For development only. DISABLE SSL VERIFICATION (not recommended for production)
+# import ssl
+# ssl._create_default_https_context = ssl._create_unverified_context
+
+from datetime import timedelta
 import json
 import asyncio
 import logging
@@ -50,6 +58,7 @@ origins = [
     "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",
     "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",
     "https://god-chatbot-frontend-git-master-oscar-candias-projects.vercel.app",
+    "https://god-chatbot-frontend-e8hqtxicq-oscar-candias-projects.vercel.app"  # New domain added
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -262,7 +271,7 @@ async def options_token(req: Request):
         "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",
         "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",
         "https://god-chatbot-frontend-git-master-oscar-candias-projects.vercel.app",
-        "https://god-chatbot-frontend-9orqw9txo-oscar-candias-projects.vercel.app"
+        "https://god-chatbot-frontend-e8hqtxicq-oscar-candias-projects.vercel.app"
     ]
     response_origin = origin if origin in allowed_origins else "*"
     return JSONResponse(
