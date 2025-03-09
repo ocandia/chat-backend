@@ -17,3 +17,16 @@ __pycache__/
 # Ignore IDE files (if any)
 .idea/
 *.vscode/
+
+# Ignore virtual environment directory (adjust the name if needed)
+god_chatbot_env/
+
+# Ignore Node artifacts (if not needed for your backend)
+node_modules/
+package-lock.json
+package.json
+keep-alive.js
+node.js
+
+# Ignore log files
+uvicorn.log
