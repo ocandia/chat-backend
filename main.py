@@ -1,4 +1,3 @@
-# Force redeploy with CORS fix - March 08, 2025
 from datetime import timedelta
 import os
 import json
@@ -127,14 +126,35 @@ async def stream_response(messages, chat_id, retrieved_metadata):
         response_content = ""
         if "prayer" in user_input:
             response_content = (
-                "Heavenly Father, I come before You with a humble heart, seeking Your peace as greeted in our conversation. "
-                "Bless all who say 'Hello' with Your love, as seen in John 3:16, and guide us with Your wisdom. "
+                "Heavenly Father, I come before You with a humble heart, seeking Your peace as we discuss faith. "
+                "Bless those who seek You, as John 3:16 reminds us of Your love, and guide us with Your wisdom. "
                 "Amen."
             )
-        else:
+        elif "what is prayer" in user_input:
             response_content = (
-                "Welcome, I am here to provide wisdom and truth, drawn from sacred texts, to guide your journey (e.g., Matthew 6:33)."
+                "Prayer is a heartfelt conversation with God, as taught in Philippians 4:6. "
+                "It’s a way to seek His guidance and express gratitude."
             )
+        else:
+            # Default to OpenAI for other queries
+            response = await client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages,
+                stream=True
+            )
+            async for chunk in response:
+                if hasattr(chunk, "choices") and chunk.choices:
+                    text = chunk.choices[0].delta.content
+                    if text:
+                        full_response += text
+                        json_data = json.dumps({"text": text})
+                        yield f"data: {json_data}\n\n"
+                        await asyncio.sleep(0.01)
+            response_content = full_response
+
+        # Stream custom or OpenAI response
+        if not response_content:
+            response_content = "I am here to provide wisdom and truth, drawn from sacred texts (e.g., Matthew 6:33)."
         for chunk in response_content.split():
             full_response += chunk + " "
             json_data = json.dumps({"text": chunk})
@@ -195,6 +215,33 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
         logger.error(f"Chat Endpoint Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+@app.post("/pray")
+async def pray(current_user: dict = Depends(get_current_user)):
+    logger.info(f"Pray request from user: {current_user['email']}")
+    metadata = [{"filename": "bible.txt"}]  # Default metadata
+    response_content = (
+        "Heavenly Father, I come before You with a humble heart, seeking Your peace as we discuss faith. "
+        "Bless those who seek You, as John 3:16 reminds us of Your love, and guide us with Your wisdom. "
+        "Amen."
+    )
+    chat_data = {
+        "user_id": current_user["email"],
+        "user_message": "Pray request",
+        "bot_reply": response_content
+    }
+    result = chats_collection.insert_one(chat_data)
+    chat_id = result.inserted_id
+
+    async def pray_stream():
+        yield f"data: {json.dumps({'sources': ['bible.txt']})}\n\n"
+        for chunk in response_content.split():
+            json_data = json.dumps({"text": chunk})
+            yield f"data: {json_data}\n\n"
+            await asyncio.sleep(0.01)
+        yield f"data: {json.dumps({'done': True})}\n\n"
+
+    return StreamingResponse(pray_stream(), media_type="text/event-stream")
+
 @app.get("/chat-history")
 def get_chat_history(current_user: dict = Depends(get_current_user)):
     logger.info(f"Fetching chat history for user: {current_user['email']}")
@@ -203,14 +250,19 @@ def get_chat_history(current_user: dict = Depends(get_current_user)):
 
 @app.options("/token")
 async def options_token(req: Request):
-    logger.info(f"Handling OPTIONS request from origin: {req.headers.get('origin')}")
+    origin = req.headers.get("origin")
+    logger.info(f"Handling OPTIONS request from origin: {origin}")
+    if not origin:
+        logger.warning("No origin header found in OPTIONS request")
+        origin = "*"  # Fallback for testing, but use specific origins in production
     return JSONResponse(
         content={"message": "Preflight request handled"},
         headers={
-            "Access-Control-Allow-Origin": req.headers.get("origin", "*"),
+            "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
-            "Access-Control-Max-Age": "86400"
+            "Access-Control-Max-Age": "86400",
+            "Access-Control-Allow-Credentials": "true"  # Ensure credentials are allowed
         }
     )
 
