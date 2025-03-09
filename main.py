@@ -49,7 +49,7 @@ origins = [
     "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",
     "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",
     "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",
-    "https://god-chatbot-frontend-*.vercel.app",
+    "https://god-chatbot-frontend-git-master-oscar-candias-projects.vercel.app",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -257,10 +257,12 @@ async def options_token(req: Request):
         origin = "*"  # Fallback for testing
     # Define allowed origins
     allowed_origins = [
-        "https://god-chatbot-frontend-fbwfke2i2-oscar-candias-projects.vercel.app",
+        "http://localhost:3000",
         "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",
+        "https://god-chatbot-frontend-8c999sdcw-oscar-candias-projects.vercel.app",
         "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",
-        "http://localhost:3000"
+        "https://god-chatbot-frontend-git-master-oscar-candias-projects.vercel.app",
+        "https://god-chatbot-frontend-9orqw9txo-oscar-candias-projects.vercel.app"  # New addition
     ]
     response_origin = origin if origin in allowed_origins else "*"
     return JSONResponse(
