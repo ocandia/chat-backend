@@ -254,15 +254,24 @@ async def options_token(req: Request):
     logger.info(f"Handling OPTIONS request from origin: {origin}")
     if not origin:
         logger.warning("No origin header found in OPTIONS request")
-        origin = "*"  # Fallback for testing, but use specific origins in production
+        origin = "*"  # Fallback for testing
+    # Define allowed origins
+    allowed_origins = [
+        "https://god-chatbot-frontend-fbwfke2i2-oscar-candias-projects.vercel.app",
+        "https://god-chatbot-frontend-dtedlz78j-oscar-candias-projects.vercel.app",
+        "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",
+        "http://localhost:3000"
+    ]
+    response_origin = origin if origin in allowed_origins else "*"
     return JSONResponse(
         content={"message": "Preflight request handled"},
+        status_code=200,
         headers={
-            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Origin": response_origin,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Access-Control-Max-Age": "86400",
-            "Access-Control-Allow-Credentials": "true"  # Ensure credentials are allowed
+            "Access-Control-Allow-Credentials": "true"
         }
     )
 
