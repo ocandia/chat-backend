@@ -195,66 +195,66 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
                 "Let the user feel they’re speaking with a trusted friend who knows God deeply."
             )
         }
-        const user_message = {"role": "user", "content": user_input};
+        user_message = {"role": "user", "content": user_input}
 
-        const messages = [system_message, user_message];
+        messages = [system_message, user_message]
 
-        const chat_data = {
+        chat_data = {
             "user_id": current_user["email"],
             "user_message": user_input,
             "bot_reply": "Streaming..."
-        };
-        const result = chats_collection.insert_one(chat_data);
-        const chat_id = result.inserted_id;
+        }
+        result = chats_collection.insert_one(chat_data)
+        chat_id = result.inserted_id
 
         return StreamingResponse(
             stream_response(messages, chat_id, metadata),
             media_type="text/event-stream"
-        );
-    } except Exception as e:
-        logger.error(f"Chat Endpoint Error: {str(e)}");
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}");
+        )
+    except Exception as e:
+        logger.error(f"Chat Endpoint Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/pray")
 async def pray(current_user: dict = Depends(get_current_user)):
     logger.info(f"Pray request from user: {current_user['email']}")
-    const metadata = [{"filename": "bible.txt"}];  // Default metadata
-    const response_content = (
+    metadata = [{"filename": "bible.txt"}]  # Default metadata
+    response_content = (
         "Heavenly Father, I come before You with a humble heart, seeking Your peace as we discuss faith. "
         "Bless those who seek You, as John 3:16 reminds us of Your love, and guide us with Your wisdom. "
         "Amen."
-    );
-    const chat_data = {
+    )
+    chat_data = {
         "user_id": current_user["email"],
         "user_message": "Pray request",
         "bot_reply": response_content
-    };
-    const result = chats_collection.insert_one(chat_data);
-    const chat_id = result.inserted_id;
+    }
+    result = chats_collection.insert_one(chat_data)
+    chat_id = result.inserted_id
 
     async def pray_stream():
-        yield f"data: {json.dumps({'sources': ['bible.txt']})}\n\n";
+        yield f"data: {json.dumps({'sources': ['bible.txt']})}\n\n"
         for chunk in response_content.split():
-            const json_data = json.dumps({"text": chunk});
-            yield f"data: {json_data}\n\n";
-            await asyncio.sleep(0.01);
-        yield f"data: {json.dumps({'done': True})}\n\n";
+            json_data = json.dumps({"text": chunk})
+            yield f"data: {json_data}\n\n"
+            await asyncio.sleep(0.01)
+        yield f"data: {json.dumps({'done': True})}\n\n"
 
-    return StreamingResponse(pray_stream(), media_type="text/event-stream");
+    return StreamingResponse(pray_stream(), media_type="text/event-stream")
 
 @app.get("/chat-history")
 def get_chat_history(current_user: dict = Depends(get_current_user)):
     logger.info(f"Fetching chat history for user: {current_user['email']}")
-    const chats = list(chats_collection.find({"user_id": current_user["email"]}, {"_id": 0}));
-    return {"history": chats};
+    chats = list(chats_collection.find({"user_id": current_user["email"]}, {"_id": 0}))
+    return {"history": chats}
 
 @app.options("/token")
 async def options_token(req: Request):
-    const origin = req.headers.get("origin");
-    logger.info(f"Handling OPTIONS request from origin: {origin}");
+    origin = req.headers.get("origin")
+    logger.info(f"Handling OPTIONS request from origin: {origin}")
     if not origin:
-        logger.warning("No origin header found in OPTIONS request");
-        origin = "*";  // Fallback for testing
+        logger.warning("No origin header found in OPTIONS request")
+        origin = "*"  # Fallback for testing
     # Define allowed origins
     allowed_origins = [
         "http://localhost:3000",
@@ -263,8 +263,8 @@ async def options_token(req: Request):
         "https://god-chatbot-frontend-pa2vbm9iy-oscar-candias-projects.vercel.app",
         "https://god-chatbot-frontend-git-master-oscar-candias-projects.vercel.app",
         "https://god-chatbot-frontend-9orqw9txo-oscar-candias-projects.vercel.app"
-    ];
-    const response_origin = origin if origin in allowed_origins else "*";
+    ]
+    response_origin = origin if origin in allowed_origins else "*"
     return JSONResponse(
         content={"message": "Preflight request handled"},
         status_code=200,
@@ -275,27 +275,27 @@ async def options_token(req: Request):
             "Access-Control-Max-Age": "86400",
             "Access-Control-Allow-Credentials": "true"
         }
-    );
+    )
 
 @app.post("/token")
 async def login(request: TokenRequest, req: Request):
-    logger.info(f"Received login request from origin: {req.headers.get('origin')}");
-    logger.info(f"Request headers: {dict(req.headers)}");
-    const user = users_collection.find_one({"email": request.email});
+    logger.info(f"Received login request from origin: {req.headers.get('origin')}")
+    logger.info(f"Request headers: {dict(req.headers)}")
+    user = users_collection.find_one({"email": request.email})
     if not user:
-        logger.error(f"User not found: {request.email}");
-        raise HTTPException(status_code=401, detail="Invalid credentials");
-    logger.info(f"Found user: {user['email']}, Hash: {user['hashed_password']}");
-    const password_verified = verify_password(request.password, user["hashed_password"]);
-    logger.info(f"Password verification result: {password_verified}");
+        logger.error(f"User not found: {request.email}")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    logger.info(f"Found user: {user['email']}, Hash: {user['hashed_password']}")
+    password_verified = verify_password(request.password, user["hashed_password"])
+    logger.info(f"Password verification result: {password_verified}")
     if not password_verified:
-        logger.error(f"Password verification failed for {request.email}");
-        raise HTTPException(status_code=401, detail="Invalid credentials");
-    const token = create_access_token(data={"sub": user["email"]}, expires_delta=timedelta(hours=1));
-    logger.info(f"Login success: {request.email}, Token: {token}");
-    const response = {"access_token": token, "token_type": "bearer"};
-    logger.info(f"Returning response with headers: {response}");
+        logger.error(f"Password verification failed for {request.email}")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token(data={"sub": user["email"]}, expires_delta=timedelta(hours=1))
+    logger.info(f"Login success: {request.email}, Token: {token}")
+    response = {"access_token": token, "token_type": "bearer"}
+    logger.info(f"Returning response with headers: {response}")
     return JSONResponse(
         content=response,
         headers={"Access-Control-Allow-Origin": req.headers.get("origin", "*")}
-    );
+    )
